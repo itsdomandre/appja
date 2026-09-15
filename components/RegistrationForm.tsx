@@ -45,11 +45,21 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   const tiktokId = useId();
   const observacoesId = useId();
   const consentId = useId();
+  const consentTextId = useId();
 
   function updateField(name: keyof typeof initialFields) {
     return (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       setFields((prev) => ({ ...prev, [name]: event.target.value }));
     };
+  }
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    // handleSubmit is async but React's onSubmit doesn't await it; call it
+    // explicitly fire-and-forget (with a safety-net .catch) rather than
+    // leaving the returned promise floating implicitly.
+    handleSubmit(event).catch((err) => {
+      console.error("Unexpected error while submitting registration:", err);
+    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -100,7 +110,7 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form onSubmit={onSubmit} noValidate>
       <div>
         <label htmlFor={nomeId}>Nome</label>
         <input
@@ -196,9 +206,10 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           type="checkbox"
           checked={consentimento}
           onChange={(event) => setConsentimento(event.target.checked)}
+          aria-describedby={consentTextId}
         />
         <label htmlFor={consentId}>Consentimento</label>
-        <p>{CONSENT_TEXT}</p>
+        <p id={consentTextId}>{CONSENT_TEXT}</p>
       </div>
 
       <button type="submit" disabled={status === "submitting"}>

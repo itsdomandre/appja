@@ -30,6 +30,8 @@ export const TELEFONE_REGEX = /^9\d{8}$/;
 
 export const MAX_FOTO_SIZE_BYTES = 20 * 1024 * 1024;
 
+export const ACCEPTED_FOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+
 export interface RegistrationInput {
   nome: string;
   telefone: string;
@@ -99,7 +101,11 @@ export function validateRegistrationInput(
 }
 
 /**
- * Validates the uploaded photo (presence + size).
+ * Validates the uploaded photo (presence, size, and declared MIME type).
+ *
+ * The MIME type check is a first line of defense only, based on the
+ * client-declared `type`; the actual decode step (compressImage) remains
+ * the real safety net against corrupt or mislabeled files.
  */
 export function validateFoto(file: File | Blob | null | undefined): ValidationResult {
   const errors: RegistrationFieldErrors = {};
@@ -108,6 +114,10 @@ export function validateFoto(file: File | Blob | null | undefined): ValidationRe
     errors.foto = "foto is required";
   } else if (file.size > MAX_FOTO_SIZE_BYTES) {
     errors.foto = "foto exceeds the maximum allowed size";
+  } else if (
+    !(ACCEPTED_FOTO_MIME_TYPES as readonly string[]).includes(file.type)
+  ) {
+    errors.foto = "foto must be one of: image/jpeg, image/png, image/webp";
   }
 
   return { valid: Object.keys(errors).length === 0, errors };

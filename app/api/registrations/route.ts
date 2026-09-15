@@ -21,20 +21,25 @@ function fieldToString(value: FormDataEntryValue | null): string | undefined {
 function optionalField(value: FormDataEntryValue | null): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
-  return trimmed === "" ? null : value;
+  return trimmed === "" ? null : trimmed;
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const formData = await request.formData();
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return Response.json({ error: "Malformed form submission" }, { status: 400 });
+  }
 
   const consentRaw = fieldToString(formData.get("consentimento"));
 
   const input: Partial<RegistrationInput> = {
-    nome: fieldToString(formData.get("nome")),
-    telefone: fieldToString(formData.get("telefone")),
-    data_nascimento: fieldToString(formData.get("data_nascimento")),
-    ano_escolar: fieldToString(formData.get("ano_escolar")),
-    localidade: fieldToString(formData.get("localidade")),
+    nome: fieldToString(formData.get("nome"))?.trim(),
+    telefone: fieldToString(formData.get("telefone"))?.trim(),
+    data_nascimento: fieldToString(formData.get("data_nascimento"))?.trim(),
+    ano_escolar: fieldToString(formData.get("ano_escolar"))?.trim(),
+    localidade: fieldToString(formData.get("localidade"))?.trim(),
     email: optionalField(formData.get("email")),
     instagram: optionalField(formData.get("instagram")),
     tiktok: optionalField(formData.get("tiktok")),
@@ -54,8 +59,18 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: message }, { status: 400 });
   }
 
-  const originalBuffer = Buffer.from(await foto!.arrayBuffer());
-  const compressed = await compressImage(originalBuffer);
+  if (!foto) {
+    return Response.json({ error: "foto is required" }, { status: 400 });
+  }
+
+  let compressed: Awaited<ReturnType<typeof compressImage>>;
+  try {
+    const originalBuffer = Buffer.from(await foto.arrayBuffer());
+    compressed = await compressImage(originalBuffer);
+  } catch (err) {
+    console.error("Failed to process uploaded foto:", err);
+    return Response.json({ error: "foto could not be processed" }, { status: 400 });
+  }
 
   const supabase = createSupabaseServerClient();
 
@@ -68,9 +83,8 @@ export async function POST(request: Request): Promise<Response> {
     });
 
   if (uploadError) {
-    return Response.json({ error: `Failed to upload foto: ${uploadError.message}` }, {
-      status: 500,
-    });
+    console.error("Failed to upload foto:", uploadError);
+    return Response.json({ error: "Failed to submit registration" }, { status: 500 });
   }
 
   const { data: row, error: insertError } = await supabase
@@ -93,10 +107,12 @@ export async function POST(request: Request): Promise<Response> {
     .single();
 
   if (insertError || !row) {
-    return Response.json(
-      { error: `Failed to create registration: ${insertError?.message ?? "unknown error"}` },
-      { status: 500 },
-    );
+    console.error("Failed to create registration:", insertError);
+    const { error: removeError } = await supabase.storage.from("fotos").remove([objectPath]);
+    if (removeError) {
+      console.error("Failed to clean up orphaned foto after insert failure:", removeError);
+    }
+    return Response.json({ error: "Failed to submit registration" }, { status: 500 });
   }
 
   return Response.json({ id: row.id, status: row.status }, { status: 201 });
