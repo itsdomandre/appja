@@ -1,11 +1,9 @@
 /**
- * Image compression contract used before uploading a registration photo to
- * the `fotos` bucket (see AC29: stored file must be strictly smaller, in
- * bytes, than the original upload).
- *
- * STUB — interface shape only, zero real logic. Owned by the implementer
- * sub-task.
+ * Image compression used before uploading a registration photo to the
+ * `fotos` bucket (see AC29: stored file must be strictly smaller, in bytes,
+ * than the original upload).
  */
+import sharp from "sharp";
 
 export interface CompressImageOptions {
   /** Upper bound the implementation should aim to compress under, in bytes. */
@@ -18,9 +16,27 @@ export interface CompressImageResult {
   sizeBytes: number;
 }
 
+const MAX_DIMENSION = 1600;
+const JPEG_QUALITY = 80;
+
 export async function compressImage(
-  _input: Buffer,
+  input: Buffer,
   _options?: CompressImageOptions,
 ): Promise<CompressImageResult> {
-  throw new Error("compressImage is not implemented yet");
+  const buffer = await sharp(input)
+    .rotate()
+    .resize({
+      width: MAX_DIMENSION,
+      height: MAX_DIMENSION,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: JPEG_QUALITY })
+    .toBuffer();
+
+  return {
+    buffer,
+    contentType: "image/jpeg",
+    sizeBytes: buffer.length,
+  };
 }

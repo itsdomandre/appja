@@ -1,10 +1,6 @@
 /**
  * Validation contract for the public registration form (/cadastro) and its
  * API route (POST /api/registrations).
- *
- * STUB — interface shape only, zero real validation logic. This module is
- * owned by the implementer sub-task; it exists here only so importers
- * (route handlers, components, tests) are import-clean.
  */
 
 export const ANO_ESCOLAR_OPTIONS = [
@@ -56,22 +52,63 @@ export interface ValidationResult {
   errors: RegistrationFieldErrors;
 }
 
+const REQUIRED_TEXT_FIELDS: Array<keyof RegistrationInput> = [
+  "nome",
+  "telefone",
+  "data_nascimento",
+  "ano_escolar",
+  "localidade",
+];
+
 /**
  * Validates the non-file fields of a registration submission.
- * NOT IMPLEMENTED: always reports failure so this stub can never
- * accidentally satisfy an acceptance criterion.
  */
 export function validateRegistrationInput(
-  _input: Partial<RegistrationInput>,
+  input: Partial<RegistrationInput>,
 ): ValidationResult {
-  return { valid: false, errors: { _stub: "validateRegistrationInput not implemented" } };
+  const errors: RegistrationFieldErrors = {};
+
+  for (const field of REQUIRED_TEXT_FIELDS) {
+    const value = input[field];
+    if (typeof value !== "string" || value.trim() === "") {
+      errors[field] = `${field} is required`;
+    }
+  }
+
+  if (
+    typeof input.telefone === "string" &&
+    input.telefone.trim() !== "" &&
+    !TELEFONE_REGEX.test(input.telefone)
+  ) {
+    errors.telefone = "telefone must match the format 9XXXXXXXX";
+  }
+
+  if (
+    typeof input.ano_escolar === "string" &&
+    input.ano_escolar.trim() !== "" &&
+    !(ANO_ESCOLAR_OPTIONS as readonly string[]).includes(input.ano_escolar)
+  ) {
+    errors.ano_escolar = "ano_escolar must be one of the fixed options";
+  }
+
+  if (input.consentimento !== true) {
+    errors.consentimento = "consentimento is required (consent must be given)";
+  }
+
+  return { valid: Object.keys(errors).length === 0, errors };
 }
 
 /**
  * Validates the uploaded photo (presence + size).
- * NOT IMPLEMENTED: always reports failure so this stub can never
- * accidentally satisfy an acceptance criterion.
  */
-export function validateFoto(_file: File | Blob | null | undefined): ValidationResult {
-  return { valid: false, errors: { _stub: "validateFoto not implemented" } };
+export function validateFoto(file: File | Blob | null | undefined): ValidationResult {
+  const errors: RegistrationFieldErrors = {};
+
+  if (!file || file.size === 0) {
+    errors.foto = "foto is required";
+  } else if (file.size > MAX_FOTO_SIZE_BYTES) {
+    errors.foto = "foto exceeds the maximum allowed size";
+  }
+
+  return { valid: Object.keys(errors).length === 0, errors };
 }
