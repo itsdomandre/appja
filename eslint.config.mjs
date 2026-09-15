@@ -1,0 +1,16 @@
+import nextConfig from "eslint-config-next";
+
+const eslintConfig = [
+  ...nextConfig,
+  {
+    ignores: [
+      "node_modules/**",
+      ".next/**",
+      "playwright-report/**",
+      "test-results/**",
+      "coverage/**",
+    ],
+  },
+];
+
+export default eslintConfig;
