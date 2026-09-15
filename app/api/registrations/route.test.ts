@@ -14,6 +14,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { Client } from "pg";
 import { createClient } from "@supabase/supabase-js";
+import sharp from "sharp";
 import { POST } from "./route";
 
 const DB_URL = process.env.SUPABASE_DB_URL;
@@ -44,8 +45,16 @@ type FormOverrides = Partial<{
   foto: File | null;
 }>;
 
+// Populated in beforeAll with a genuinely decodable JPEG (a tiny solid-color
+// image) so implementations that decode the upload (e.g. to resize/recompress
+// it) don't reject it as corrupt.
+let defaultFotoBytes: Buffer;
+
 function defaultFoto(): File {
-  return new File([Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0, 1, 2, 3])], "foto.jpg", {
+  if (!defaultFotoBytes) {
+    throw new Error("defaultFotoBytes not initialized; expected beforeAll to have run first");
+  }
+  return new File([defaultFotoBytes], "foto.jpg", {
     type: "image/jpeg",
   });
 }
@@ -90,6 +99,12 @@ describe("POST /api/registrations", () => {
   beforeAll(async () => {
     db = new Client({ connectionString: DB_URL });
     await db.connect();
+
+    defaultFotoBytes = await sharp({
+      create: { width: 8, height: 8, channels: 3, background: { r: 200, g: 50, b: 50 } },
+    })
+      .jpeg()
+      .toBuffer();
   });
 
   afterAll(async () => {
@@ -246,7 +261,21 @@ describe("POST /api/registrations", () => {
   });
 
   it("AC29 (integration): stores an accepted large photo strictly smaller, in bytes, than the original upload", async () => {
-    const original = Buffer.alloc(5 * 1024 * 1024, 7); // 5MB, well within the 20MB limit
+    // A genuinely decodable JPEG, large in both pixel dimensions (well over
+    // the 1600px resize target) and encoded byte size (high-entropy noise at
+    // high quality, ~4.5MB, well within the 20MB limit), so a real
+    // resize+recompress implementation has real work to do and can be
+    // expected to shrink it.
+    const width = 2400;
+    const height = 2400;
+    const channels = 3;
+    const raw = Buffer.alloc(width * height * channels);
+    for (let i = 0; i < raw.length; i++) {
+      raw[i] = Math.floor(Math.random() * 256);
+    }
+    const original = await sharp(raw, { raw: { width, height, channels } })
+      .jpeg({ quality: 90 })
+      .toBuffer();
     const file = new File([original], "large.jpg", { type: "image/jpeg" });
 
     const res = await POST(buildRequest(buildFormData({ foto: file })));
