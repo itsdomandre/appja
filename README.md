@@ -130,6 +130,26 @@ appja.vercel.app`, giving a production URL of `https://appja.vercel.app`
 (the old `raio-topaz.vercel.app` alias remains live too, pointing at the
 same deployments).
 
+**Troubleshooting — duplicate empty project after renaming**: re-running
+`npx vercel link` after the rename above accidentally created a second,
+empty Vercel project named `raio`. This happens because `vercel link` (with
+no `--project` flag) auto-detects the project by matching the local
+directory name (`raio`) against existing project names; once the real
+project was renamed to `appja`, that lookup no longer found a match and
+`vercel link` silently created a fresh `raio` project instead of linking to
+the existing (renamed) one. Symptom: `npx vercel project ls` shows two
+projects, the real `appja` one and an empty `raio` one. Fix: remove the
+duplicate with `npx vercel project remove raio` — note this prompts for an
+interactive `y/N` confirmation that `--non-interactive` alone does **not**
+suppress in this CLI version, so pipe the confirmation via stdin instead:
+`echo y | npx vercel project remove raio`. To avoid recreating the
+duplicate, always re-link explicitly by name after a rename rather than
+relying on directory-name auto-detection:
+
+```
+npx vercel link --yes --project appja
+```
+
 ### 6. Connect GitHub for auto-deploy (follow-up, not done yet here)
 
 Connecting the Vercel project to the GitHub repo for deploy-on-push requires
@@ -179,8 +199,9 @@ npx vercel project protection <project-name> --json
 
 Look for `"ssoProtection"` in the output — e.g. this deployment initially
 showed `"ssoProtection": {"deploymentType": "all_except_custom_domains"}`,
-meaning it was blocking the `<name>.vercel.app` alias. It's disabled when
-the field reads `false` or is absent from the output.
+meaning it was blocking the `<name>.vercel.app` alias. Disabled looks like
+`"ssoProtection": null` (key present, value `null` — this Vercel CLI
+version's actual representation of "off"; not `false` and not absent).
 
 If it's on, disable it for a public app:
 
@@ -190,8 +211,8 @@ npx vercel project protection disable <project-name> --sso
 
 Concretely, for this deployment: `npx vercel project protection disable
 appja --sso`. Re-run the `--json` check afterward to confirm `ssoProtection`
-is now `false`/absent, then re-verify (step 10) — the smoke tests fail
-against the login-redirect page until this is disabled.
+is now `null`, then re-verify (step 10) — the smoke tests fail against the
+login-redirect page until this is disabled.
 
 ### 10. Verify
 
