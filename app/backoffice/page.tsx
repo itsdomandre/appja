@@ -142,7 +142,7 @@ export default function BackofficePage() {
       <h1>Backoffice — cadastros</h1>
 
       <form onSubmit={onSubmit}>
-        <div>
+        <div className="form-field">
           <label htmlFor={nomeId}>Nome</label>
           <input
             id={nomeId}
@@ -153,7 +153,7 @@ export default function BackofficePage() {
           />
         </div>
 
-        <div>
+        <div className="form-field">
           <label htmlFor={localidadeId}>Localidade</label>
           <input
             id={localidadeId}
@@ -164,7 +164,7 @@ export default function BackofficePage() {
           />
         </div>
 
-        <div>
+        <div className="form-field">
           <label htmlFor={anoEscolarId}>Ano escolar</label>
           <select
             id={anoEscolarId}
@@ -180,7 +180,7 @@ export default function BackofficePage() {
           </select>
         </div>
 
-        <div>
+        <div className="form-field">
           <label htmlFor={statusId}>Status</label>
           <select id={statusId} value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">Todos</option>

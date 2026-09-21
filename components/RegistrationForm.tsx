@@ -111,7 +111,7 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
 
   return (
     <form onSubmit={onSubmit} noValidate>
-      <div>
+      <div className="form-field">
         <label htmlFor={nomeId}>Nome</label>
         <input
           id={nomeId}
@@ -121,7 +121,7 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         />
       </div>
 
-      <div>
+      <div className="form-field">
         <label htmlFor={telefoneId}>Telefone</label>
         <input
           id={telefoneId}
@@ -131,7 +131,7 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         />
       </div>
 
-      <div>
+      <div className="form-field">
         <label htmlFor={dataNascimentoId}>Data de nascimento</label>
         <input
           id={dataNascimentoId}
@@ -144,7 +144,7 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         />
       </div>
 
-      <div>
+      <div className="form-field">
         <label htmlFor={anoEscolarId}>Ano escolar</label>
         <select id={anoEscolarId} value={fields.ano_escolar} onChange={updateField("ano_escolar")}>
           <option value="">Selecione...</option>
@@ -156,7 +156,7 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         </select>
       </div>
 
-      <div>
+      <div className="form-field">
         <label htmlFor={localidadeId}>Localidade</label>
         <input
           id={localidadeId}
@@ -166,17 +166,17 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         />
       </div>
 
-      <div>
+      <div className="form-field">
         <label htmlFor={fotoId}>Foto</label>
         <input id={fotoId} type="file" accept="image/*" ref={fotoInputRef} />
       </div>
 
-      <div>
+      <div className="form-field">
         <label htmlFor={emailId}>Email</label>
         <input id={emailId} type="email" value={fields.email} onChange={updateField("email")} />
       </div>
 
-      <div>
+      <div className="form-field">
         <label htmlFor={instagramId}>Instagram</label>
         <input
           id={instagramId}
@@ -186,12 +186,12 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         />
       </div>
 
-      <div>
+      <div className="form-field">
         <label htmlFor={tiktokId}>TikTok</label>
         <input id={tiktokId} type="text" value={fields.tiktok} onChange={updateField("tiktok")} />
       </div>
 
-      <div>
+      <div className="form-field">
         <label htmlFor={observacoesId}>Observações</label>
         <textarea
           id={observacoesId}
@@ -200,7 +200,7 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         />
       </div>
 
-      <div>
+      <div className="form-field-checkbox">
         <input
           id={consentId}
           type="checkbox"
@@ -208,11 +208,13 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           onChange={(event) => setConsentimento(event.target.checked)}
           aria-describedby={consentTextId}
         />
-        <label htmlFor={consentId}>Consentimento</label>
-        <p id={consentTextId}>{CONSENT_TEXT}</p>
+        <div>
+          <label htmlFor={consentId}>Consentimento</label>
+          <p id={consentTextId}>{CONSENT_TEXT}</p>
+        </div>
       </div>
 
-      <button type="submit" disabled={status === "submitting"}>
+      <button type="submit" className="btn-primary" disabled={status === "submitting"}>
         Submeter
       </button>
 

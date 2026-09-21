@@ -54,7 +54,7 @@ export default function BackofficeLoginPage() {
       <form onSubmit={onSubmit} noValidate>
         <h1>Acesso ao backoffice</h1>
 
-        <div>
+        <div className="form-field">
           <label htmlFor={passwordId}>Senha</label>
           <input
             id={passwordId}
@@ -66,7 +66,7 @@ export default function BackofficeLoginPage() {
           />
         </div>
 
-        <button type="submit" disabled={status === "submitting"}>
+        <button type="submit" className="btn-primary" disabled={status === "submitting"}>
           Entrar
         </button>
 
