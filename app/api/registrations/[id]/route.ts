@@ -11,6 +11,7 @@
  * middleware.ts entirely, so the check can't be left to middleware alone.
  */
 import { calculateAge } from "@/lib/registrations/age";
+import { UUID_PATTERN } from "@/lib/registrations/id";
 import { requireAdminSession } from "@/lib/auth/session";
 import type { RegistrationRow } from "@/lib/registrations/query";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -18,14 +19,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 /** 5 minutes -- long enough to load the detail page and view the photo, short
  * enough to keep leaked links useless quickly (spec.md §9 signed-URL risk). */
 const SIGNED_URL_EXPIRY_SECONDS = 5 * 60;
-
-/** Matches the `uuid` type's textual representation (RFC 4122 layout,
- * version digit not enforced since Postgres' `uuid` column accepts any
- * variant). Used to reject syntactically-invalid ids as a clean 404 before
- * they ever reach Postgres, which would otherwise surface as a generic 500
- * ("invalid input syntax for type uuid"). */
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface RouteContext {
   params: Promise<{ id: string }>;

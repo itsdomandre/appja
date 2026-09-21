@@ -12,7 +12,11 @@
  * successful PATCH, or `{ error }` naming the invalid status on 400).
  */
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+
+/** How long the "Status atualizado." confirmation stays visible before the
+ * indicator reverts to idle. */
+const STATUS_SUCCESS_DISPLAY_MS = 3000;
 
 const STATUS_OPTIONS = ["pendente", "aprovado", "rejeitado"] as const;
 
@@ -43,10 +47,24 @@ export default function BackofficeDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params?.id;
+  const statusSelectId = useId();
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [statusUpdate, setStatusUpdate] = useState<
     { status: "idle" } | { status: "saving" } | { status: "success" } | { status: "error"; message: string }
   >({ status: "idle" });
+
+  // Guards handleStatusChange's post-await state updates against firing
+  // after the component has unmounted, same rationale as the initial-load
+  // effect's `cancelled` flag below.
+  const mountedRef = useRef(true);
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -103,6 +121,7 @@ export default function BackofficeDetailPage() {
   async function handleStatusChange(nextStatus: string) {
     if (!id) return;
 
+    if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
     setStatusUpdate({ status: "saving" });
     try {
       const response = await fetch(`/api/registrations/${id}/status`, {
@@ -110,6 +129,7 @@ export default function BackofficeDetailPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ status: nextStatus }),
       });
+      if (!mountedRef.current) return;
 
       const contentType = response.headers.get("content-type") ?? "";
       if (response.redirected || !contentType.includes("application/json")) {
@@ -118,6 +138,7 @@ export default function BackofficeDetailPage() {
       }
 
       const body = await response.json().catch(() => ({}));
+      if (!mountedRef.current) return;
 
       if (!response.ok) {
         setStatusUpdate({
@@ -133,8 +154,13 @@ export default function BackofficeDetailPage() {
           : current,
       );
       setStatusUpdate({ status: "success" });
+      successTimeoutRef.current = setTimeout(() => {
+        if (mountedRef.current) setStatusUpdate({ status: "idle" });
+      }, STATUS_SUCCESS_DISPLAY_MS);
     } catch {
-      setStatusUpdate({ status: "error", message: "Não foi possível atualizar o status." });
+      if (mountedRef.current) {
+        setStatusUpdate({ status: "error", message: "Não foi possível atualizar o status." });
+      }
     }
   }
 
@@ -192,9 +218,9 @@ export default function BackofficeDetailPage() {
 
         <dt>Status</dt>
         <dd>
-          <label htmlFor="status-select">Status</label>
+          <label htmlFor={statusSelectId}>Status</label>
           <select
-            id="status-select"
+            id={statusSelectId}
             value={registration.status}
             disabled={statusUpdate.status === "saving"}
             onChange={(event) => {
@@ -209,7 +235,7 @@ export default function BackofficeDetailPage() {
               </option>
             ))}
           </select>
-          {statusUpdate.status === "saving" && <span>A guardar…</span>}
+          {statusUpdate.status === "saving" && <span role="status">A guardar…</span>}
           {statusUpdate.status === "success" && <span role="status">Status atualizado.</span>}
           {statusUpdate.status === "error" && <span role="alert">{statusUpdate.message}</span>}
         </dd>

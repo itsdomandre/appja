@@ -18,27 +18,16 @@
  * left to middleware alone.
  */
 import { requireAdminSession } from "@/lib/auth/session";
+import { UUID_PATTERN } from "@/lib/registrations/id";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-
-/** Mirrors the `registrations_status_check` constraint's allowed values. */
-const VALID_STATUSES = ["pendente", "aprovado", "rejeitado"] as const;
-type ValidStatus = (typeof VALID_STATUSES)[number];
-
-/** Matches the `uuid` type's textual representation (RFC 4122 layout,
- * version digit not enforced since Postgres' `uuid` column accepts any
- * variant). Used to reject syntactically-invalid ids as a clean 404 before
- * they ever reach Postgres, which would otherwise surface as a generic 500
- * ("invalid input syntax for type uuid"). Same convention as
- * app/api/registrations/[id]/route.ts. */
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { STATUS_OPTIONS, type Status } from "@/lib/validation/registration";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-function isValidStatus(value: unknown): value is ValidStatus {
-  return typeof value === "string" && (VALID_STATUSES as readonly string[]).includes(value);
+function isValidStatus(value: unknown): value is Status {
+  return typeof value === "string" && (STATUS_OPTIONS as readonly string[]).includes(value);
 }
 
 export async function PATCH(request: Request, context: RouteContext): Promise<Response> {
@@ -46,6 +35,10 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
   if (authError) return authError;
 
   const { id } = await context.params;
+
+  if (!UUID_PATTERN.test(id)) {
+    return Response.json({ error: `Registration not found for id ${id}` }, { status: 404 });
+  }
 
   let body: unknown;
   try {
@@ -59,14 +52,10 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
   if (!isValidStatus(status)) {
     return Response.json(
       {
-        error: `Invalid status: ${JSON.stringify(status)}. Must be one of ${VALID_STATUSES.join(", ")}`,
+        error: `Invalid status: ${JSON.stringify(status)}. Must be one of ${STATUS_OPTIONS.join(", ")}`,
       },
       { status: 400 },
     );
-  }
-
-  if (!UUID_PATTERN.test(id)) {
-    return Response.json({ error: `Registration not found for id ${id}` }, { status: 404 });
   }
 
   const supabase = createSupabaseServerClient();
@@ -76,7 +65,7 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
     .update({ status })
     .eq("id", id)
     .select("id, status")
-    .maybeSingle<{ id: string; status: string }>();
+    .maybeSingle<{ id: string; status: Status }>();
 
   if (error) {
     console.error("Failed to update registration status:", error);
