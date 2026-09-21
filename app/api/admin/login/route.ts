@@ -7,7 +7,7 @@
  * 4xx JSON error naming invalid credentials and sets no cookie.
  */
 import { NextResponse } from "next/server";
-import { createSessionToken, setSessionCookie } from "@/lib/auth/session";
+import { createSessionToken, setSessionCookie, verifyAdminPassword } from "@/lib/auth/session";
 
 interface LoginRequestBody {
   password?: unknown;
@@ -29,7 +29,7 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
   }
 
-  if (!password || password !== adminPassword) {
+  if (!password || !(await verifyAdminPassword(password, adminPassword))) {
     return NextResponse.json({ error: "Senha inválida" }, { status: 401 });
   }
 

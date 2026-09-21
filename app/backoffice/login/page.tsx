@@ -62,6 +62,7 @@ export default function BackofficeLoginPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="current-password"
+            autoFocus
           />
         </div>
 

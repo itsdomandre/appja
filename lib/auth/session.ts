@@ -82,6 +82,35 @@ async function verify(payload: string, signature: string): Promise<boolean> {
   }
 }
 
+/**
+ * Timing-safe comparison of two equal-length byte arrays. Web Crypto has no
+ * built-in generic `timingSafeEqual`, so this XORs every byte and only
+ * inspects the accumulated result at the end, avoiding a short-circuiting
+ * `!==` on secret-derived data.
+ */
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a[i] ^ b[i];
+  }
+  return diff === 0;
+}
+
+/**
+ * Timing-safe check of a submitted admin password against the configured
+ * `ADMIN_PASSWORD`. Both values are SHA-256 digested first, so the
+ * comparison operates on fixed-length hashes rather than short-circuiting
+ * on the raw secret.
+ */
+export async function verifyAdminPassword(candidate: string, expected: string): Promise<boolean> {
+  const [candidateDigest, expectedDigest] = await Promise.all([
+    crypto.subtle.digest("SHA-256", textEncode(candidate)),
+    crypto.subtle.digest("SHA-256", textEncode(expected)),
+  ]);
+  return timingSafeEqual(new Uint8Array(candidateDigest), new Uint8Array(expectedDigest));
+}
+
 interface SessionPayload {
   exp: number;
 }
