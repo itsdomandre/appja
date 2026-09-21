@@ -25,3 +25,5 @@ supabase/.temp
 *.log
 .supabase-start*.log
 *.tsbuildinfo
+.vercel
+.env*
