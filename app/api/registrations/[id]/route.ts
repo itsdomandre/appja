@@ -11,37 +11,21 @@
  * middleware.ts entirely, so the check can't be left to middleware alone.
  */
 import { calculateAge } from "@/lib/registrations/age";
-import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
+import { requireAdminSession } from "@/lib/auth/session";
+import type { RegistrationRow } from "@/lib/registrations/query";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /** 5 minutes -- long enough to load the detail page and view the photo, short
  * enough to keep leaked links useless quickly (spec.md §9 signed-URL risk). */
 const SIGNED_URL_EXPIRY_SECONDS = 5 * 60;
 
-function getSessionToken(request: Request): string | undefined {
-  const cookieHeader = request.headers.get("cookie");
-  if (!cookieHeader) return undefined;
-
-  for (const part of cookieHeader.split(";")) {
-    const eqIndex = part.indexOf("=");
-    if (eqIndex === -1) continue;
-    const name = part.slice(0, eqIndex).trim();
-    if (name === SESSION_COOKIE_NAME) {
-      return decodeURIComponent(part.slice(eqIndex + 1).trim());
-    }
-  }
-
-  return undefined;
-}
-
-async function requireAdminSession(request: Request): Promise<Response | null> {
-  const token = getSessionToken(request);
-  const hasValidSession = await verifySessionToken(token);
-  if (!hasValidSession) {
-    return Response.json({ error: "Missing or invalid admin session" }, { status: 401 });
-  }
-  return null;
-}
+/** Matches the `uuid` type's textual representation (RFC 4122 layout,
+ * version digit not enforced since Postgres' `uuid` column accepts any
+ * variant). Used to reject syntactically-invalid ids as a clean 404 before
+ * they ever reach Postgres, which would otherwise surface as a generic 500
+ * ("invalid input syntax for type uuid"). */
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -53,13 +37,17 @@ export async function GET(request: Request, context: RouteContext): Promise<Resp
 
   const { id } = await context.params;
 
+  if (!UUID_PATTERN.test(id)) {
+    return Response.json({ error: `Registration not found for id ${id}` }, { status: 404 });
+  }
+
   const supabase = createSupabaseServerClient();
 
   const { data: row, error } = await supabase
     .from("registrations")
     .select("*")
     .eq("id", id)
-    .maybeSingle();
+    .maybeSingle<RegistrationRow>();
 
   if (error) {
     console.error("Failed to fetch registration:", error);

@@ -33,7 +33,9 @@ export interface RegistrationRow {
 }
 
 function escapeIlikePattern(value: string): string {
-  return value.replace(/[%_]/g, (match) => `\\${match}`);
+  // Backslash must be escaped first -- otherwise the backslashes inserted
+  // below to escape `%`/`_` would themselves get re-escaped.
+  return value.replace(/\\/g, "\\\\").replace(/[%_]/g, (match) => `\\${match}`);
 }
 
 export async function listRegistrations(

@@ -16,45 +16,13 @@
 import { calculateAge } from "@/lib/registrations/age";
 import { listRegistrations, type RegistrationFilters } from "@/lib/registrations/query";
 import { compressImage } from "@/lib/images/compress";
-import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
+import { requireAdminSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   validateFoto,
   validateRegistrationInput,
   type RegistrationInput,
 } from "@/lib/validation/registration";
-
-/**
- * Extracts the admin session cookie's value straight from the `cookie`
- * request header. This can't use `next/server`'s `NextRequest`/`cookies()`
- * helpers because these handlers are exercised with plain `Request`
- * instances in tests (bypassing middleware.ts and any Next.js request
- * context), same rationale as sub-task 2's session-check pattern.
- */
-function getSessionToken(request: Request): string | undefined {
-  const cookieHeader = request.headers.get("cookie");
-  if (!cookieHeader) return undefined;
-
-  for (const part of cookieHeader.split(";")) {
-    const eqIndex = part.indexOf("=");
-    if (eqIndex === -1) continue;
-    const name = part.slice(0, eqIndex).trim();
-    if (name === SESSION_COOKIE_NAME) {
-      return decodeURIComponent(part.slice(eqIndex + 1).trim());
-    }
-  }
-
-  return undefined;
-}
-
-async function requireAdminSession(request: Request): Promise<Response | null> {
-  const token = getSessionToken(request);
-  const hasValidSession = await verifySessionToken(token);
-  if (!hasValidSession) {
-    return Response.json({ error: "Missing or invalid admin session" }, { status: 401 });
-  }
-  return null;
-}
 
 function fieldToString(value: FormDataEntryValue | null): string | undefined {
   if (typeof value !== "string") return undefined;

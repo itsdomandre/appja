@@ -10,10 +10,13 @@
  */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState } from "react";
-import { ANO_ESCOLAR_OPTIONS } from "@/lib/validation/registration";
+import { useEffect, useId, useState, type FormEvent } from "react";
+import { ANO_ESCOLAR_OPTIONS, STATUS_OPTIONS } from "@/lib/validation/registration";
 
-const STATUS_OPTIONS = ["pendente", "aprovado", "rejeitado"] as const;
+/** Debounce delay for the free-text `nome`/`localidade` filters, so a fetch
+ * isn't fired on every keystroke. Select filters (`ano_escolar`/`status`)
+ * change less often and don't need debouncing. */
+const TEXT_FILTER_DEBOUNCE_MS = 300;
 
 interface RegistrationListItem {
   id: string;
@@ -34,7 +37,7 @@ export default function BackofficePage() {
   const [status, setStatus] = useState("");
 
   const [registrations, setRegistrations] = useState<RegistrationListItem[]>([]);
-  const [loadStatus, setLoadStatus] = useState<LoadStatus>("idle");
+  const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const nomeId = useId();
@@ -42,10 +45,25 @@ export default function BackofficePage() {
   const anoEscolarId = useId();
   const statusId = useId();
 
-  // Re-fetches whenever a filter changes; the "Buscar" button below is a
-  // convenience for keyboard/form-submit users (preventing a full page
-  // navigation) rather than a strictly necessary trigger, since the filter
-  // state change alone already re-runs this effect.
+  // Debounces the free-text filters so a fetch isn't fired on every
+  // keystroke; the effect below re-runs (and re-fetches) once they settle.
+  const [debouncedNome, setDebouncedNome] = useState(nome);
+  const [debouncedLocalidade, setDebouncedLocalidade] = useState(localidade);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedNome(nome), TEXT_FILTER_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [nome]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedLocalidade(localidade), TEXT_FILTER_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [localidade]);
+
+  // Re-fetches whenever a (debounced) filter changes; the "Buscar" button
+  // below is a convenience for keyboard/form-submit users (preventing a
+  // full page navigation) rather than a strictly necessary trigger, since
+  // the filter state change alone already re-runs this effect.
   useEffect(() => {
     let cancelled = false;
 
@@ -54,8 +72,8 @@ export default function BackofficePage() {
       setErrorMessage(null);
 
       const params = new URLSearchParams();
-      if (nome.trim()) params.set("nome", nome.trim());
-      if (localidade.trim()) params.set("localidade", localidade.trim());
+      if (debouncedNome.trim()) params.set("nome", debouncedNome.trim());
+      if (debouncedLocalidade.trim()) params.set("localidade", debouncedLocalidade.trim());
       if (anoEscolar) params.set("ano_escolar", anoEscolar);
       if (status) params.set("status", status);
 
@@ -83,6 +101,7 @@ export default function BackofficePage() {
         if (!response.ok) {
           setLoadStatus("error");
           setErrorMessage(String(body.error ?? "Não foi possível carregar os cadastros."));
+          setRegistrations([]);
           return;
         }
 
@@ -90,6 +109,7 @@ export default function BackofficePage() {
         if (!Array.isArray(nextRegistrations)) {
           setLoadStatus("error");
           setErrorMessage("Não foi possível carregar os cadastros.");
+          setRegistrations([]);
           return;
         }
 
@@ -99,6 +119,7 @@ export default function BackofficePage() {
         if (!cancelled) {
           setLoadStatus("error");
           setErrorMessage("Não foi possível carregar os cadastros.");
+          setRegistrations([]);
         }
       }
     }
@@ -110,9 +131,9 @@ export default function BackofficePage() {
     return () => {
       cancelled = true;
     };
-  }, [nome, localidade, anoEscolar, status, router]);
+  }, [debouncedNome, debouncedLocalidade, anoEscolar, status, router]);
 
-  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
   }
 
@@ -181,11 +202,11 @@ export default function BackofficePage() {
       <table>
         <thead>
           <tr>
-            <th>Nome</th>
-            <th>Idade</th>
-            <th>Localidade</th>
-            <th>Ano escolar</th>
-            <th>Status</th>
+            <th scope="col">Nome</th>
+            <th scope="col">Idade</th>
+            <th scope="col">Localidade</th>
+            <th scope="col">Ano escolar</th>
+            <th scope="col">Status</th>
           </tr>
         </thead>
         <tbody>

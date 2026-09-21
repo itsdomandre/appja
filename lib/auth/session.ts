@@ -161,3 +161,49 @@ export function setSessionCookie(response: NextResponse, token: string): void {
 export function clearSessionCookie(response: NextResponse): void {
   response.cookies.set(SESSION_COOKIE_NAME, "", cookieOptions(0));
 }
+
+/**
+ * Extracts the admin session cookie's value straight from a raw `cookie`
+ * request header. Used by route handlers that can't rely on
+ * `next/server`'s `NextRequest`/`cookies()` helpers because they're
+ * exercised with plain `Request` instances in tests (bypassing
+ * middleware.ts and any Next.js request context).
+ *
+ * A malformed percent-encoded value (e.g. a bare `%`) makes
+ * `decodeURIComponent` throw a `URIError`; that's treated the same as "no
+ * cookie present" rather than bubbling up as an unhandled exception.
+ */
+function getSessionTokenFromHeader(cookieHeader: string | null): string | undefined {
+  if (!cookieHeader) return undefined;
+
+  for (const part of cookieHeader.split(";")) {
+    const eqIndex = part.indexOf("=");
+    if (eqIndex === -1) continue;
+    const name = part.slice(0, eqIndex).trim();
+    if (name === SESSION_COOKIE_NAME) {
+      try {
+        return decodeURIComponent(part.slice(eqIndex + 1).trim());
+      } catch {
+        return undefined;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Admin-session guard shared by route handlers that must check auth
+ * directly (rather than relying solely on middleware.ts), because their
+ * unit tests invoke GET/POST handlers directly with plain `Request`
+ * instances. Returns a ready-to-return 401 JSON `Response` when there is no
+ * valid admin session, or `null` when the request may proceed.
+ */
+export async function requireAdminSession(request: Request): Promise<Response | null> {
+  const token = getSessionTokenFromHeader(request.headers.get("cookie"));
+  const hasValidSession = await verifySessionToken(token);
+  if (!hasValidSession) {
+    return Response.json({ error: "Missing or invalid admin session" }, { status: 401 });
+  }
+  return null;
+}

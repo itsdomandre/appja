@@ -25,6 +25,12 @@ export const ANO_ESCOLAR_OPTIONS = [
 
 export type AnoEscolar = (typeof ANO_ESCOLAR_OPTIONS)[number];
 
+/** Mirrors the `registrations_status_check` constraint in
+ * supabase/migrations/0001_create_registrations.sql. */
+export const STATUS_OPTIONS = ["pendente", "aprovado", "rejeitado"] as const;
+
+export type Status = (typeof STATUS_OPTIONS)[number];
+
 /** telefone must be 9 digits starting with 9, e.g. 912345678 */
 export const TELEFONE_REGEX = /^9\d{8}$/;
 
