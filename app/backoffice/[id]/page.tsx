@@ -1,15 +1,20 @@
 "use client";
 
 /**
- * Backoffice detail page (spec.md §5.2 use case 4). Fetches
+ * Backoffice detail page (spec.md §5.2 use cases 4-5). Fetches
  * `GET /api/registrations/[id]` and renders every field plus the photo via
- * the short-lived signed URL (`foto_url`). Not directly asserted by any
- * test -- a minimal functional page built against the response shape
- * app/api/registrations/[id]/route.test.ts asserts (all stored fields plus
- * `foto_url`, or `{ error }` naming the id on 404).
+ * the short-lived signed URL (`foto_url`), and lets the admin change the
+ * status via `PATCH /api/registrations/[id]/status`
+ * (app/api/registrations/[id]/status/route.ts, sub-task 4). Not directly
+ * asserted by any test -- a minimal functional page built against the
+ * response shapes those routes' own route tests assert (all stored fields
+ * plus `foto_url`, or `{ error }` naming the id on 404; `{ id, status }` on a
+ * successful PATCH, or `{ error }` naming the invalid status on 400).
  */
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+const STATUS_OPTIONS = ["pendente", "aprovado", "rejeitado"] as const;
 
 interface RegistrationDetail {
   id: string;
@@ -39,6 +44,9 @@ export default function BackofficeDetailPage() {
   const router = useRouter();
   const id = params?.id;
   const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [statusUpdate, setStatusUpdate] = useState<
+    { status: "idle" } | { status: "saving" } | { status: "success" } | { status: "error"; message: string }
+  >({ status: "idle" });
 
   useEffect(() => {
     if (!id) return;
@@ -91,6 +99,44 @@ export default function BackofficeDetailPage() {
       cancelled = true;
     };
   }, [id, router]);
+
+  async function handleStatusChange(nextStatus: string) {
+    if (!id) return;
+
+    setStatusUpdate({ status: "saving" });
+    try {
+      const response = await fetch(`/api/registrations/${id}/status`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+
+      const contentType = response.headers.get("content-type") ?? "";
+      if (response.redirected || !contentType.includes("application/json")) {
+        router.replace("/backoffice/login");
+        return;
+      }
+
+      const body = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setStatusUpdate({
+          status: "error",
+          message: String(body.error ?? "Não foi possível atualizar o status."),
+        });
+        return;
+      }
+
+      setState((current) =>
+        current.status === "loaded"
+          ? { status: "loaded", registration: { ...current.registration, status: body.status } }
+          : current,
+      );
+      setStatusUpdate({ status: "success" });
+    } catch {
+      setStatusUpdate({ status: "error", message: "Não foi possível atualizar o status." });
+    }
+  }
 
   if (state.status === "loading") {
     return (
@@ -145,7 +191,28 @@ export default function BackofficeDetailPage() {
         <dd>{registration.observacoes ?? "—"}</dd>
 
         <dt>Status</dt>
-        <dd>{registration.status}</dd>
+        <dd>
+          <label htmlFor="status-select">Status</label>
+          <select
+            id="status-select"
+            value={registration.status}
+            disabled={statusUpdate.status === "saving"}
+            onChange={(event) => {
+              handleStatusChange(event.target.value).catch((err) => {
+                console.error("Unexpected error while updating status:", err);
+              });
+            }}
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+          {statusUpdate.status === "saving" && <span>A guardar…</span>}
+          {statusUpdate.status === "success" && <span role="status">Status atualizado.</span>}
+          {statusUpdate.status === "error" && <span role="alert">{statusUpdate.message}</span>}
+        </dd>
 
         <dt>Criado em</dt>
         <dd>{registration.created_at}</dd>
