@@ -2,6 +2,28 @@
 
 Mais recente primeiro.
 
+## Edição de cadastro pelo admin (pós sub-tarefa 7)
+
+- **Fonte:** decisão do stakeholder. Pedido: "preciso adicionar uma maneira pro adm poder
+  editar" na tela de detalhe (`/backoffice/[id]`), sem passar pelo pipeline formal de spec
+  (mesmo pedido explícito de "não é necessário testes e etc" da entrada anterior).
+- **Decisão:**
+  - Campos editáveis: todos os campos de texto (nome, telefone, data de nascimento, ano
+    escolar, localidade, email, instagram, tiktok, observações). Foto **não** é editável por
+    agora (reusar o pipeline de compressão/upload ficaria mais complexo do que o pedido pedia).
+  - Novo endpoint `PATCH /api/registrations/[id]` (admin-only, reaproveita
+    `validateRegistrationInput` forçando `consentimento: true` já que a edição nunca toca essa
+    coluna). Status e foto continuam com seus próprios controles/endpoints já existentes,
+    inalterados.
+  - UI: botão "Editar" na tela de detalhe alterna os campos para inputs, com "Salvar"/
+    "Cancelar".
+  - O badge de status (redundante com o seletor de aprovar/rejeitar já presente) foi removido
+    do cabeçalho da tela de detalhe.
+- **Verificação:** sem testes automatizados novos (pedido explícito do usuário) — validado por
+  smoke test manual contra o Supabase local real (edição válida 200 + persistência confirmada
+  no banco, edição inválida 400 nomeando os campos, requisição sem sessão 401) e pela suíte
+  automatizada existente (56/56, typecheck, lint, build) permanecendo verde.
+
 ## Conteúdo: renomeação, textos e campos exibidos (pós sub-tarefa 7)
 
 - **Fonte:** decisão do stakeholder. Pedido explícito: "não é necessário testes e etc, é só
