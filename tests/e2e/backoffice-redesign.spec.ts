@@ -101,15 +101,15 @@ test.describe("backoffice redesign — shared shell and status badges", () => {
 
     try {
       await page.goto("/backoffice/login");
-      await expect(page.getByRole("banner")).toContainText("Raio");
+      await expect(page.getByRole("banner")).toContainText("AppJA - IASD AMADORA");
       const loginColor = await getTopbarBackgroundColor(page);
 
       await loginAsAdmin(page);
-      await expect(page.getByRole("banner")).toContainText("Raio");
+      await expect(page.getByRole("banner")).toContainText("AppJA - IASD AMADORA");
       const listColor = await getTopbarBackgroundColor(page);
 
       await page.goto(`/backoffice/${id}`);
-      await expect(page.getByRole("banner")).toContainText("Raio");
+      await expect(page.getByRole("banner")).toContainText("AppJA - IASD AMADORA");
       const detailColor = await getTopbarBackgroundColor(page);
 
       expect(listColor).toBe(loginColor);
@@ -119,40 +119,9 @@ test.describe("backoffice redesign — shared shell and status badges", () => {
     }
   });
 
-  test("AC33 — status badges for pendente and aprovado registrations have different computed background-colors", async ({
-    page,
-  }) => {
-    const marker = `AC33 ${Date.now()}`;
-    const pendenteNome = `${marker} Pendente`;
-    const aprovadoNome = `${marker} Aprovado`;
-
-    await seedRegistration({ nome: pendenteNome, status: "pendente" });
-    await seedRegistration({ nome: aprovadoNome, status: "aprovado" });
-
-    try {
-      await loginAsAdmin(page);
-
-      // Scope the listing to just these two seeded rows via the existing
-      // nome substring filter (AC16), so unrelated pre-existing data in the
-      // local database can't interfere with the assertion below.
-      await page.getByLabel("Nome").fill(marker);
-
-      const pendenteRow = page.getByRole("row", { name: new RegExp(pendenteNome) });
-      const aprovadoRow = page.getByRole("row", { name: new RegExp(aprovadoNome) });
-      await expect(pendenteRow).toBeVisible();
-      await expect(aprovadoRow).toBeVisible();
-
-      const pendenteBadgeColor = await pendenteRow
-        .getByText("pendente", { exact: true })
-        .evaluate((el) => getComputedStyle(el).backgroundColor);
-      const aprovadoBadgeColor = await aprovadoRow
-        .getByText("aprovado", { exact: true })
-        .evaluate((el) => getComputedStyle(el).backgroundColor);
-
-      expect(pendenteBadgeColor).not.toBe(aprovadoBadgeColor);
-    } finally {
-      await cleanupRegistration(pendenteNome);
-      await cleanupRegistration(aprovadoNome);
-    }
-  });
+  // AC33 (status badges visible in the /backoffice list) was removed:
+  // stakeholder decision post sub-task 7 dropped the Status column from the
+  // list table (see specs/registration-backoffice/decisions.md). The badge
+  // still exists on the detail page, but that surface isn't what AC33
+  // asserted, so the check was removed rather than relocated.
 });

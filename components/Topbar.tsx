@@ -42,7 +42,7 @@ export default function Topbar({ showLogout = false }: TopbarProps) {
   return (
     <header className="bg-gray-900 text-white">
       <div className="mx-auto flex max-w-[1100px] items-center justify-between px-6 py-4">
-        <span className="text-base font-semibold tracking-tight">Raio</span>
+        <span className="text-base font-semibold tracking-tight">AppJA - IASD AMADORA</span>
 
         {showLogout && (
           <button

@@ -11,6 +11,7 @@
  * plus `foto_url`, or `{ error }` naming the id on 404; `{ id, status }` on a
  * successful PATCH, or `{ error }` naming the invalid status on 400).
  */
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { initials } from "@/lib/initials";
@@ -204,6 +205,14 @@ export default function BackofficeDetailPage() {
     <>
       <Topbar showLogout />
       <main>
+        <Link
+          href="/backoffice"
+          className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-gray-600
+            hover:text-gray-900 hover:underline"
+        >
+          ← Voltar para Home
+        </Link>
+
         <div className="mb-6 flex items-center gap-4">
           <span
             className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-200
@@ -213,7 +222,35 @@ export default function BackofficeDetailPage() {
           </span>
           <div>
             <h1 className="mb-1">{registration.nome}</h1>
-            <StatusBadge status={registration.status} />
+            <div className="flex items-center gap-3">
+              <StatusBadge status={registration.status} />
+              <label htmlFor={statusSelectId} className="sr-only">
+                Status
+              </label>
+              <select
+                id={statusSelectId}
+                value={registration.status}
+                disabled={statusUpdate.status === "saving"}
+                onChange={(event) => {
+                  handleStatusChange(event.target.value).catch((err) => {
+                    console.error("Unexpected error while updating status:", err);
+                  });
+                }}
+              >
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              {statusUpdate.status === "saving" && <span role="status">A guardar…</span>}
+              {statusUpdate.status === "success" && (
+                <span role="status">Status atualizado.</span>
+              )}
+              {statusUpdate.status === "error" && (
+                <span role="alert">{statusUpdate.message}</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -229,6 +266,11 @@ export default function BackofficeDetailPage() {
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:col-span-2">
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <dt>Nome completo</dt>
+                <dd>{registration.nome}</dd>
+              </div>
+
               <div>
                 <dt>Idade</dt>
                 <dd>{registration.idade}</dd>
@@ -274,40 +316,6 @@ export default function BackofficeDetailPage() {
                 <dd>{registration.observacoes ?? "—"}</dd>
               </div>
 
-              <div className="sm:col-span-2">
-                <dt>Status</dt>
-                <dd>
-                  <label htmlFor={statusSelectId}>Status</label>
-                  <select
-                    id={statusSelectId}
-                    value={registration.status}
-                    disabled={statusUpdate.status === "saving"}
-                    onChange={(event) => {
-                      handleStatusChange(event.target.value).catch((err) => {
-                        console.error("Unexpected error while updating status:", err);
-                      });
-                    }}
-                  >
-                    {STATUS_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  {statusUpdate.status === "saving" && <span role="status">A guardar…</span>}
-                  {statusUpdate.status === "success" && (
-                    <span role="status">Status atualizado.</span>
-                  )}
-                  {statusUpdate.status === "error" && (
-                    <span role="alert">{statusUpdate.message}</span>
-                  )}
-                </dd>
-              </div>
-
-              <div className="sm:col-span-2">
-                <dt>Criado em</dt>
-                <dd>{registration.created_at}</dd>
-              </div>
             </dl>
           </div>
         </div>

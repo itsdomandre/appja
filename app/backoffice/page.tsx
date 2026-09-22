@@ -17,7 +17,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { initials } from "@/lib/initials";
 import { ANO_ESCOLAR_OPTIONS, STATUS_OPTIONS, type Status } from "@/lib/validation/registration";
-import StatusBadge from "@/components/StatusBadge";
 import Topbar from "@/components/Topbar";
 
 /** Debounce delay for the free-text `nome`/`localidade` filters, so a fetch
@@ -32,6 +31,7 @@ const PAGE_SIZE = 20;
 interface RegistrationListItem {
   id: string;
   nome: string;
+  telefone: string;
   localidade: string;
   ano_escolar: string;
   status: Status;
@@ -311,7 +311,7 @@ export default function BackofficePage() {
                   className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide
                     text-gray-500"
                 >
-                  Status
+                  Telefone
                 </th>
               </tr>
             </thead>
@@ -337,9 +337,7 @@ export default function BackofficePage() {
                   <td className="px-4 py-3 text-sm text-gray-700">{registration.idade}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{registration.localidade}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{registration.ano_escolar}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <StatusBadge status={registration.status} />
-                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{registration.telefone}</td>
                 </tr>
               ))}
             </tbody>

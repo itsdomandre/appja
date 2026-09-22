@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Raio",
-  description: "Raio registration",
+  title: "AppJA - IASD Amadora",
+  description: "AppJA - IASD Amadora registration",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
