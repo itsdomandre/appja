@@ -13,6 +13,8 @@
  */
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
+import Topbar from "@/components/Topbar";
+import StatusBadge from "@/components/StatusBadge";
 
 /** How long the "Status atualizado." confirmation stays visible before the
  * indicator reverts to idle. */
@@ -166,83 +168,146 @@ export default function BackofficeDetailPage() {
 
   if (state.status === "loading") {
     return (
-      <main>
-        <p>A carregar…</p>
-      </main>
+      <>
+        <Topbar showLogout />
+        <main>
+          <p>A carregar…</p>
+        </main>
+      </>
     );
   }
 
   if (state.status === "error") {
     return (
-      <main>
-        <p role="alert">{state.message}</p>
-      </main>
+      <>
+        <Topbar showLogout />
+        <main>
+          <p role="alert">{state.message}</p>
+        </main>
+      </>
     );
   }
 
   const registration = state.registration;
 
   return (
-    <main>
-      <h1>{registration.nome}</h1>
-
-      <img src={registration.foto_url} alt={`Foto de ${registration.nome}`} width={320} />
-
-      <dl>
-        <dt>Idade</dt>
-        <dd>{registration.idade}</dd>
-
-        <dt>Telefone</dt>
-        <dd>{registration.telefone}</dd>
-
-        <dt>Data de nascimento</dt>
-        <dd>{registration.data_nascimento}</dd>
-
-        <dt>Ano escolar</dt>
-        <dd>{registration.ano_escolar}</dd>
-
-        <dt>Localidade</dt>
-        <dd>{registration.localidade}</dd>
-
-        <dt>Email</dt>
-        <dd>{registration.email ?? "—"}</dd>
-
-        <dt>Instagram</dt>
-        <dd>{registration.instagram ?? "—"}</dd>
-
-        <dt>TikTok</dt>
-        <dd>{registration.tiktok ?? "—"}</dd>
-
-        <dt>Observações</dt>
-        <dd>{registration.observacoes ?? "—"}</dd>
-
-        <dt>Status</dt>
-        <dd>
-          <label htmlFor={statusSelectId}>Status</label>
-          <select
-            id={statusSelectId}
-            value={registration.status}
-            disabled={statusUpdate.status === "saving"}
-            onChange={(event) => {
-              handleStatusChange(event.target.value).catch((err) => {
-                console.error("Unexpected error while updating status:", err);
-              });
-            }}
+    <>
+      <Topbar showLogout />
+      <main>
+        <div className="mb-6 flex items-center gap-4">
+          <span
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-200
+              text-lg font-semibold text-gray-700"
           >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-          {statusUpdate.status === "saving" && <span role="status">A guardar…</span>}
-          {statusUpdate.status === "success" && <span role="status">Status atualizado.</span>}
-          {statusUpdate.status === "error" && <span role="alert">{statusUpdate.message}</span>}
-        </dd>
+            {registration.nome
+              .trim()
+              .split(/\s+/)
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((part) => part.charAt(0).toUpperCase())
+              .join("")}
+          </span>
+          <div>
+            <h1 className="mb-1">{registration.nome}</h1>
+            <StatusBadge status={registration.status} />
+          </div>
+        </div>
 
-        <dt>Criado em</dt>
-        <dd>{registration.created_at}</dd>
-      </dl>
-    </main>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:col-span-1">
+            <img
+              src={registration.foto_url}
+              alt={`Foto de ${registration.nome}`}
+              width={320}
+              className="w-full rounded-xl object-cover"
+            />
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:col-span-2">
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <dt>Idade</dt>
+                <dd>{registration.idade}</dd>
+              </div>
+
+              <div>
+                <dt>Telefone</dt>
+                <dd>{registration.telefone}</dd>
+              </div>
+
+              <div>
+                <dt>Data de nascimento</dt>
+                <dd>{registration.data_nascimento}</dd>
+              </div>
+
+              <div>
+                <dt>Ano escolar</dt>
+                <dd>{registration.ano_escolar}</dd>
+              </div>
+
+              <div>
+                <dt>Localidade</dt>
+                <dd>{registration.localidade}</dd>
+              </div>
+
+              <div>
+                <dt>Email</dt>
+                <dd>{registration.email ?? "—"}</dd>
+              </div>
+
+              <div>
+                <dt>Instagram</dt>
+                <dd>{registration.instagram ?? "—"}</dd>
+              </div>
+
+              <div>
+                <dt>TikTok</dt>
+                <dd>{registration.tiktok ?? "—"}</dd>
+              </div>
+
+              <div className="sm:col-span-2">
+                <dt>Observações</dt>
+                <dd>{registration.observacoes ?? "—"}</dd>
+              </div>
+
+              <div className="sm:col-span-2">
+                <dt>Status</dt>
+                <dd>
+                  <label htmlFor={statusSelectId}>Status</label>
+                  <select
+                    id={statusSelectId}
+                    value={registration.status}
+                    disabled={statusUpdate.status === "saving"}
+                    onChange={(event) => {
+                      handleStatusChange(event.target.value).catch((err) => {
+                        console.error("Unexpected error while updating status:", err);
+                      });
+                    }}
+                  >
+                    {STATUS_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  {statusUpdate.status === "saving" && <span role="status">A guardar…</span>}
+                  {statusUpdate.status === "success" && (
+                    <span role="status">Status atualizado.</span>
+                  )}
+                  {statusUpdate.status === "error" && (
+                    <span role="alert">{statusUpdate.message}</span>
+                  )}
+                </dd>
+              </div>
+
+              <div className="sm:col-span-2">
+                <dt>Criado em</dt>
+                <dd>{registration.created_at}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </main>
+    </>
   );
 }

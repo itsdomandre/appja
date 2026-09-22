@@ -5,13 +5,20 @@
  * compresses the uploaded photo, uploads it to the private `fotos` storage
  * bucket, and inserts a `pendente` row into `public.registrations`.
  *
- * GET /api/registrations (sub-task 3, spec.md §5.2 use case 3, §8 AC12-AC16)
+ * GET /api/registrations (sub-task 3, spec.md §5.2 use case 3, §8 AC12-AC16;
+ * pagination added for §8 AC36, sub-task 7)
  *
  * Admin-only listing with optional filters (`nome`/`localidade` -- substring,
  * case-insensitive; `ano_escolar`/`status` -- exact match), each item
  * carrying a computed `idade`. The admin-session check happens directly in
  * this handler (not just via middleware.ts) because these route-handler unit
  * tests invoke GET/POST directly and bypass middleware entirely.
+ *
+ * `page`/`limit` are optional query params. When both are provided, the
+ * response is `{ registrations: [...], total }`, where `total` is the count
+ * of all rows matching the current filters (not just the requested page).
+ * When absent, the response is unchanged (`{ registrations: [...] }`, no
+ * `total` field) -- preserves AC12-AC16 exactly.
  */
 import { calculateAge } from "@/lib/registrations/age";
 import { listRegistrations, type RegistrationFilters } from "@/lib/registrations/query";
@@ -145,6 +152,30 @@ export async function GET(request: Request): Promise<Response> {
   if (status) filters.status = status;
 
   const supabase = createSupabaseServerClient();
+
+  const pageParam = url.searchParams.get("page");
+  const limitParam = url.searchParams.get("limit");
+  const page = pageParam !== null ? Number(pageParam) : null;
+  const limit = limitParam !== null ? Number(limitParam) : null;
+  const hasPagination =
+    page !== null && limit !== null && Number.isFinite(page) && Number.isFinite(limit);
+
+  if (hasPagination) {
+    let result;
+    try {
+      result = await listRegistrations(supabase, filters, { page: page!, limit: limit! });
+    } catch (err) {
+      console.error("Failed to list registrations:", err);
+      return Response.json({ error: "Failed to list registrations" }, { status: 500 });
+    }
+
+    const registrations = result.rows.map((row) => ({
+      ...row,
+      idade: calculateAge(row.data_nascimento),
+    }));
+
+    return Response.json({ registrations, total: result.total }, { status: 200 });
+  }
 
   let rows;
   try {
