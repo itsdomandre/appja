@@ -402,4 +402,94 @@ describe("GET /api/registrations", () => {
     const body = await res.json();
     expect(String(body.error).toLowerCase()).toMatch(/sess|auth|autentic/);
   });
+
+  // AC36 (spec.md §8, sub-task 7): GET /api/registrations accepts optional
+  // `page`/`limit` params; when provided, the response also includes the
+  // total count of rows matching the current filters. Self-contained (own
+  // seed + cleanup within each `it`, via the `db`/`supabaseAdmin` already in
+  // this describe's scope) rather than relying on the single-row fixture
+  // seeded by this describe's own `beforeAll` above, since exercising the
+  // page-size boundary needs more than one page's worth of rows (>20).
+  //
+  // Response shape decision (not fixed by spec.md/decisions.md, made here as
+  // part of writing the failing spec, same as the unpaginated shape decided
+  // above): with `page`/`limit`, GET /api/registrations responds 200 with
+  // `{ registrations: [...], total: number }`, where `total` is the count of
+  // all rows matching the current filters (not just the requested page).
+  it("AC36: with page/limit provided, returns the requested page's rows plus the total count of all rows matching the current filters", async () => {
+    const cookie = await validSessionCookiePair();
+    const PAGINATION_NOME_PREFIX = `GetList Page ${Date.now()}`;
+    const seedRows = Array.from({ length: 25 }, (_, i) => ({
+      nome: `${PAGINATION_NOME_PREFIX} ${String(i + 1).padStart(2, "0")}`,
+      telefone: "912345678",
+      data_nascimento: "2000-01-01",
+      ano_escolar: "9º ano",
+      localidade: "Lisboa",
+      foto_path: `pagination-fixture-${i + 1}.jpg`,
+      consentimento: true,
+      status: "pendente",
+    }));
+
+    const { error: seedError } = await supabaseAdmin.from("registrations").insert(seedRows);
+    if (seedError) {
+      throw new Error(`Failed to seed AC36 pagination fixture rows: ${seedError.message}`);
+    }
+
+    try {
+      const nomeParam = encodeURIComponent(PAGINATION_NOME_PREFIX);
+
+      const page1Res = await GET(
+        new Request(
+          `http://localhost/api/registrations?nome=${nomeParam}&page=1&limit=20`,
+          { headers: { cookie } },
+        ),
+      );
+      expect(page1Res.status).toBe(200);
+      const page1Body = await page1Res.json();
+      expect(Array.isArray(page1Body.registrations)).toBe(true);
+      expect(page1Body.registrations).toHaveLength(20);
+      expect(page1Body.total).toBe(25);
+
+      const page2Res = await GET(
+        new Request(
+          `http://localhost/api/registrations?nome=${nomeParam}&page=2&limit=20`,
+          { headers: { cookie } },
+        ),
+      );
+      expect(page2Res.status).toBe(200);
+      const page2Body = await page2Res.json();
+      expect(Array.isArray(page2Body.registrations)).toBe(true);
+      expect(page2Body.registrations).toHaveLength(5);
+      expect(page2Body.total).toBe(25);
+
+      const allIds = new Set([
+        ...(page1Body.registrations as Array<{ id: string }>).map((r) => r.id),
+        ...(page2Body.registrations as Array<{ id: string }>).map((r) => r.id),
+      ]);
+      expect(allIds.size).toBe(25);
+    } finally {
+      await db.query("delete from public.registrations where nome like $1", [
+        `${PAGINATION_NOME_PREFIX}%`,
+      ]);
+    }
+  });
+
+  it("AC36: without page/limit, keeps the existing full-list behaviour (AC12-AC16 -- no total field, no page slicing)", async () => {
+    const cookie = await validSessionCookiePair();
+
+    const res = await GET(
+      new Request(
+        `http://localhost/api/registrations?nome=${encodeURIComponent(GET_TEST_NOME)}`,
+        { headers: { cookie } },
+      ),
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.registrations)).toBe(true);
+    expect(
+      (body.registrations as Array<{ id: string }>).some((r) => r.id === insertedId),
+    ).toBe(true);
+    expect(body.total).toBeUndefined();
+  });
 });
