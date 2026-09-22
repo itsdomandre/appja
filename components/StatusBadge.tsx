@@ -8,23 +8,29 @@
  * small dot) matches the doctorapp-fe reference (not copied verbatim, this
  * is a fresh Tailwind implementation for Next.js).
  */
-const STATUS_PILL_CLASSES: Record<string, string> = {
+import type { Status } from "@/lib/validation/registration";
+
+const STATUS_PILL_CLASSES: Record<Status, string> = {
   pendente: "bg-yellow-100 text-yellow-800",
   aprovado: "bg-green-100 text-green-800",
   rejeitado: "bg-red-100 text-red-800",
 };
 
-const STATUS_DOT_CLASSES: Record<string, string> = {
+const STATUS_DOT_CLASSES: Record<Status, string> = {
   pendente: "bg-yellow-500",
   aprovado: "bg-green-500",
   rejeitado: "bg-red-500",
 };
 
+// Falls back to a neutral style for any runtime value outside the `Status`
+// union -- the type now guarantees this at compile time, but `status` still
+// ultimately comes from parsed JSON (API responses), which isn't guaranteed
+// to match at runtime.
 const DEFAULT_PILL_CLASSES = "bg-gray-100 text-gray-700";
 const DEFAULT_DOT_CLASSES = "bg-gray-400";
 
 export interface StatusBadgeProps {
-  status: string;
+  status: Status;
 }
 
 export default function StatusBadge({ status }: StatusBadgeProps) {

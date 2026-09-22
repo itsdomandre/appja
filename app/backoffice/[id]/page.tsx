@@ -13,14 +13,14 @@
  */
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
+import { initials } from "@/lib/initials";
+import { STATUS_OPTIONS, type Status } from "@/lib/validation/registration";
 import Topbar from "@/components/Topbar";
 import StatusBadge from "@/components/StatusBadge";
 
 /** How long the "Status atualizado." confirmation stays visible before the
  * indicator reverts to idle. */
 const STATUS_SUCCESS_DISPLAY_MS = 3000;
-
-const STATUS_OPTIONS = ["pendente", "aprovado", "rejeitado"] as const;
 
 interface RegistrationDetail {
   id: string;
@@ -34,7 +34,7 @@ interface RegistrationDetail {
   tiktok: string | null;
   observacoes: string | null;
   consentimento: boolean;
-  status: string;
+  status: Status;
   created_at: string;
   idade: number;
   foto_url: string;
@@ -60,6 +60,16 @@ export default function BackofficeDetailPage() {
   // effect's `cancelled` flag below.
   const mountedRef = useRef(true);
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Held in a ref (not used directly as the data-fetch effect's dependency
+  // below) because next/navigation's useRouter() return value isn't
+  // guaranteed referentially stable across renders; including it directly in
+  // that effect's dependency array would re-run it (and re-fetch) on every
+  // render, not just when `id` changes. Same fix as app/backoffice/page.tsx.
+  const routerRef = useRef(router);
+  useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
 
   useEffect(() => {
     return () => {
@@ -88,7 +98,7 @@ export default function BackofficeDetailPage() {
         // detail view from an unparseable body.
         const contentType = response.headers.get("content-type") ?? "";
         if (response.redirected || !contentType.includes("application/json")) {
-          router.replace("/backoffice/login");
+          routerRef.current.replace("/backoffice/login");
           return;
         }
 
@@ -118,7 +128,7 @@ export default function BackofficeDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, router]);
+  }, [id]);
 
   async function handleStatusChange(nextStatus: string) {
     if (!id) return;
@@ -199,13 +209,7 @@ export default function BackofficeDetailPage() {
             className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-200
               text-lg font-semibold text-gray-700"
           >
-            {registration.nome
-              .trim()
-              .split(/\s+/)
-              .filter(Boolean)
-              .slice(0, 2)
-              .map((part) => part.charAt(0).toUpperCase())
-              .join("")}
+            {initials(registration.nome)}
           </span>
           <div>
             <h1 className="mb-1">{registration.nome}</h1>

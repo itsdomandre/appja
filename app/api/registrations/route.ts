@@ -18,7 +18,11 @@
  * response is `{ registrations: [...], total }`, where `total` is the count
  * of all rows matching the current filters (not just the requested page).
  * When absent, the response is unchanged (`{ registrations: [...] }`, no
- * `total` field) -- preserves AC12-AC16 exactly.
+ * `total` field) -- preserves AC12-AC16 exactly. When provided, both must be
+ * positive integers or the response is a 400 naming the invalid value(s) --
+ * otherwise e.g. `page=0` silently produced a misleading empty-but-nonzero-
+ * total response, and a non-integer `page` produced a slice that didn't
+ * align to any real page boundary.
  */
 import { calculateAge } from "@/lib/registrations/age";
 import { listRegistrations, type RegistrationFilters } from "@/lib/registrations/query";
@@ -155,15 +159,21 @@ export async function GET(request: Request): Promise<Response> {
 
   const pageParam = url.searchParams.get("page");
   const limitParam = url.searchParams.get("limit");
-  const page = pageParam !== null ? Number(pageParam) : null;
-  const limit = limitParam !== null ? Number(limitParam) : null;
-  const hasPagination =
-    page !== null && limit !== null && Number.isFinite(page) && Number.isFinite(limit);
+  const hasPagination = pageParam !== null && limitParam !== null;
 
   if (hasPagination) {
+    const page = Number(pageParam);
+    const limit = Number(limitParam);
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1) {
+      return Response.json(
+        { error: `Invalid page/limit: page=${pageParam}, limit=${limitParam}. Both must be positive integers` },
+        { status: 400 },
+      );
+    }
+
     let result;
     try {
-      result = await listRegistrations(supabase, filters, { page: page!, limit: limit! });
+      result = await listRegistrations(supabase, filters, { page, limit });
     } catch (err) {
       console.error("Failed to list registrations:", err);
       return Response.json({ error: "Failed to list registrations" }, { status: 500 });

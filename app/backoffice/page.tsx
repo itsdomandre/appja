@@ -15,7 +15,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { ANO_ESCOLAR_OPTIONS, STATUS_OPTIONS } from "@/lib/validation/registration";
+import { initials } from "@/lib/initials";
+import { ANO_ESCOLAR_OPTIONS, STATUS_OPTIONS, type Status } from "@/lib/validation/registration";
 import StatusBadge from "@/components/StatusBadge";
 import Topbar from "@/components/Topbar";
 
@@ -33,21 +34,11 @@ interface RegistrationListItem {
   nome: string;
   localidade: string;
   ano_escolar: string;
-  status: string;
+  status: Status;
   idade: number;
 }
 
 type LoadStatus = "idle" | "loading" | "error";
-
-/** Mirrors doctorapp-fe's `initials()` helper: first letter of the first
- * word + first letter of the last word, uppercased. A single-name input
- * yields just that one initial. */
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "";
-  if (parts.length === 1) return parts[0]!.charAt(0).toUpperCase();
-  return (parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)).toUpperCase();
-}
 
 export default function BackofficePage() {
   const router = useRouter();
@@ -284,7 +275,9 @@ export default function BackofficePage() {
           <table className="min-w-full">
             <thead className="bg-gray-50/70">
               <tr>
-                <th scope="col" className="w-14 px-4 py-3" />
+                <th scope="col" className="w-14 px-4 py-3">
+                  <span className="sr-only">Avatar</span>
+                </th>
                 <th
                   scope="col"
                   className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide
