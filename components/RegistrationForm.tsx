@@ -3,6 +3,7 @@
 /**
  * Public registration form (used on /cadastro).
  */
+import { useRouter } from "next/navigation";
 import { useId, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { ANO_ESCOLAR_OPTIONS } from "@/lib/validation/registration";
 
@@ -25,9 +26,10 @@ const initialFields = {
   observacoes: "",
 };
 
-type Status = "idle" | "submitting" | "success" | "error";
+type Status = "idle" | "submitting" | "error";
 
 export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
+  const router = useRouter();
   const [fields, setFields] = useState(initialFields);
   const [consentimento, setConsentimento] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
@@ -91,13 +93,8 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
       });
 
       if (response.ok) {
-        setStatus("success");
-        setFields(initialFields);
-        setConsentimento(false);
-        if (fotoInputRef.current) {
-          fotoInputRef.current.value = "";
-        }
         onSuccess?.();
+        router.push("/cadastro/sucesso");
       } else {
         const body = await response.json().catch(() => ({}));
         setStatus("error");
@@ -218,7 +215,6 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         Submeter
       </button>
 
-      {status === "success" && <p role="status">Cadastro enviado com sucesso!</p>}
       {status === "error" && errorMessage && <p role="alert">{errorMessage}</p>}
     </form>
   );

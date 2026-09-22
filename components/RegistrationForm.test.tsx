@@ -4,9 +4,19 @@ import userEvent from "@testing-library/user-event";
 import RegistrationForm from "./RegistrationForm";
 import { ANO_ESCOLAR_OPTIONS } from "@/lib/validation/registration";
 
+// `next/navigation`'s `useRouter` isn't mocked anywhere else in this file
+// (RegistrationForm is the first component under test here that imports
+// it), so this file provides its own minimal mock, scoped to this file
+// only -- same pattern as app/backoffice/page.test.tsx.
+const mockPush = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush, replace: vi.fn() }),
+}));
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  mockPush.mockClear();
 });
 
 describe("RegistrationForm", () => {
@@ -38,7 +48,7 @@ describe("RegistrationForm", () => {
     expect(screen.getByText(/consent/i)).toBeInTheDocument();
   });
 
-  it("AC23: shows a success confirmation and resets the form after a successful submission", async () => {
+  it("AC23: redirects to the /cadastro/sucesso confirmation page after a successful submission", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -62,8 +72,9 @@ describe("RegistrationForm", () => {
     await user.click(screen.getByRole("checkbox", { name: /consent/i }));
     await user.click(screen.getByRole("button", { name: /submeter|enviar|submit/i }));
 
-    expect(await screen.findByText(/sucesso|success/i)).toBeInTheDocument();
-    expect((screen.getByLabelText(/nome/i) as HTMLInputElement).value).toBe("");
+    await vi.waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/cadastro/sucesso");
+    });
 
     fetchMock.mockRestore();
   });

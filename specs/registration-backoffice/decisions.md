@@ -2,6 +2,21 @@
 
 Mais recente primeiro.
 
+## Página de agradecimento após o cadastro (pós edição admin)
+
+- **Fonte:** decisão do stakeholder. Pedido: após o envio do cadastro, redirecionar para uma
+  página de agradecimento dedicada (`/cadastro/sucesso`) com ícone verde de confirmação e o
+  texto "Equipa JA | IASD AMADORA", em vez da confirmação inline anterior.
+- **Conflito identificado e resolvido:** o teste certificado de AC23
+  (`components/RegistrationForm.test.tsx`) verificava que o formulário permanecia na tela e era
+  limpo após o envio — comportamento incompatível com um redirecionamento de página completa.
+  Perguntado, o usuário confirmou a página separada; o teste foi atualizado para verificar o
+  redirecionamento (`router.push("/cadastro/sucesso")`) em vez do reset inline dos campos.
+- **Consequências:** `components/RegistrationForm.tsx` navega para `/cadastro/sucesso` em vez
+  de mostrar a mensagem de sucesso inline; nova página `app/cadastro/sucesso/page.tsx`
+  (ícone verde + texto + link de volta). Suíte automatizada (56/56), typecheck, lint e build
+  permanecem verdes.
+
 ## Edição de cadastro pelo admin (pós sub-tarefa 7)
 
 - **Fonte:** decisão do stakeholder. Pedido: "preciso adicionar uma maneira pro adm poder
